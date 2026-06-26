@@ -1,541 +1,973 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="it">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Emoji 贪吃蛇</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio di Animazione</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    body {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-      background: linear-gradient(160deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
-      color: #fff;
-    }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #06060c;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
 
-    .app {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 18px;
-      padding: 24px;
-    }
+        #canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
 
-    h1 {
-      font-size: 2rem;
-      background: linear-gradient(90deg, #a8ff78, #78ffd6);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
+        /* ─── Home ─── */
+        #home {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 24px;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
 
-    .screen { display: none; flex-direction: column; align-items: center; gap: 20px; }
-    .screen.active { display: flex; }
+        #home.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
 
-    .subtitle { color: #94a3b8; font-size: 0.95rem; }
+        .home-inner {
+            width: 100%;
+            max-width: 880px;
+            animation: fadeUp 0.8s ease;
+        }
 
-    .mode-cards {
-      display: flex;
-      gap: 14px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(24px);
+            }
 
-    .mode-card {
-      width: 150px;
-      padding: 22px 14px;
-      border-radius: 16px;
-      border: 2px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.06);
-      cursor: pointer;
-      text-align: center;
-      transition: transform 0.2s, border-color 0.2s;
-    }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
 
-    .mode-card:hover { transform: translateY(-3px); border-color: #78ffd6; }
-    .mode-card .icon { font-size: 2.2rem; margin-bottom: 8px; }
-    .mode-card h3 { margin-bottom: 6px; }
-    .mode-card p { font-size: 0.78rem; color: #94a3b8; line-height: 1.5; }
+        .home-title {
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 300;
+            letter-spacing: 0.12em;
+            line-height: 1.3;
+            background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.55) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
-    .game-layout {
-      display: flex;
-      gap: 20px;
-      align-items: flex-start;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
+        .home-subtitle {
+            margin-top: 14px;
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 0.04em;
+            line-height: 1.6;
+        }
 
-    .board-wrap {
-      border-radius: 14px;
-      padding: 4px;
-      background: linear-gradient(135deg, #a8ff78, #78ffd6);
-      box-shadow: 0 0 40px rgba(120, 255, 214, 0.2);
-    }
+        .home-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 14px;
+            margin-top: 40px;
+        }
 
-    #gameCanvas {
-      display: block;
-      border-radius: 10px;
-      background: #0d1b1e;
-    }
+        .home-card {
+            pointer-events: auto;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 22px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(16px);
+            text-align: left;
+            font-family: inherit;
+            color: inherit;
+        }
 
-    .side-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      min-width: 140px;
-    }
+        .home-card:hover {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(255, 255, 255, 0.18);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
 
-    .panel-box {
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 12px;
-      padding: 14px;
-    }
+        .home-card-icon {
+            font-size: 1.6rem;
+            margin-bottom: 12px;
+            display: block;
+        }
 
-    .panel-box h4 {
-      font-size: 0.72rem;
-      color: #94a3b8;
-      letter-spacing: 1px;
-      margin-bottom: 4px;
-    }
+        .home-card-name {
+            font-size: 1rem;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+        }
 
-    .panel-box .value { font-size: 1.5rem; font-weight: 700; }
+        .home-card-desc {
+            margin-top: 6px;
+            font-size: 0.78rem;
+            color: rgba(255, 255, 255, 0.38);
+            line-height: 1.5;
+        }
 
-    .controls-hint {
-      font-size: 0.75rem;
-      color: #64748b;
-      line-height: 1.9;
-    }
+        /* ─── Esperienza ─── */
+        #experience {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
 
-    .controls-hint kbd {
-      display: inline-block;
-      padding: 1px 6px;
-      border-radius: 4px;
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.15);
-      font-size: 0.68rem;
-    }
+        #experience.active {
+            opacity: 1;
+            visibility: visible;
+        }
 
-    .btn {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 10px;
-      font-size: 0.9rem;
-      font-family: inherit;
-      cursor: pointer;
-      color: #fff;
-      transition: transform 0.15s;
-    }
+        .ui {
+            position: fixed;
+            z-index: 10;
+            pointer-events: none;
+        }
 
-    .btn:hover { transform: scale(1.03); }
-    .btn-primary { background: linear-gradient(135deg, #11998e, #38ef7d); color: #0d1b1e; font-weight: 600; }
-    .btn-secondary { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); }
+        .header {
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 24px 28px;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+        }
 
-    .mobile-pad {
-      display: none;
-      grid-template-columns: repeat(3, 52px);
-      grid-template-rows: repeat(3, 52px);
-      gap: 6px;
-      margin-top: 4px;
-    }
+        .header-text {}
 
-    .pad-btn {
-      border: none;
-      border-radius: 10px;
-      background: rgba(255,255,255,0.1);
-      color: #fff;
-      font-size: 1.2rem;
-      cursor: pointer;
-    }
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            opacity: 0.95;
+        }
 
-    .pad-btn:active { background: rgba(120, 255, 214, 0.3); }
-    .pad-btn.empty { visibility: hidden; }
+        .header p {
+            margin-top: 6px;
+            font-size: 0.8rem;
+            opacity: 0.5;
+        }
 
-    .overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.75);
-      backdrop-filter: blur(4px);
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-    }
+        .back-btn {
+            pointer-events: auto;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.65);
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border-radius: 50%;
+            cursor: pointer;
+            backdrop-filter: blur(12px);
+            font-family: inherit;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
 
-    .overlay.active { display: flex; }
+        .back-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
 
-    .modal {
-      background: linear-gradient(145deg, #1a2f35, #0f2027);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 20px;
-      padding: 36px 40px;
-      text-align: center;
-      max-width: 360px;
-      animation: pop 0.3s ease;
-    }
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
 
-    @keyframes pop {
-      from { transform: scale(0.85); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
-    }
+        .hint {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
 
-    .modal .big-emoji { font-size: 3.5rem; margin-bottom: 10px; }
-    .modal h2 { margin-bottom: 8px; }
-    .modal p { color: #94a3b8; margin-bottom: 20px; line-height: 1.6; }
-    .modal-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .hint.show {
+            opacity: 1;
+        }
 
-    @media (max-width: 600px) {
-      .mobile-pad { display: grid; }
-    }
-  </style>
+        .hint span {
+            display: inline-block;
+            padding: 12px 24px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 12px;
+            font-size: 0.9rem;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
 </head>
+
 <body>
-  <div class="app">
-    <!-- 菜单 -->
-    <div id="menuScreen" class="screen active">
-      <h1>🐍 Emoji 贪吃蛇</h1>
-      <p class="subtitle">吃掉食物让蛇变长，别撞到自己！</p>
-      <div class="mode-cards">
-        <div class="mode-card" data-speed="slow">
-          <div class="icon">🌱</div>
-          <h3>简单</h3>
-          <p>速度慢<br>适合新手</p>
+    <canvas id="canvas"></canvas>
+
+    <!-- Home -->
+    <div id="home">
+        <div class="home-inner">
+            <h1 class="home-title">Laboratorio di Animazione</h1>
+            <p class="home-subtitle">Esplora animazioni visive interattive · Clicca una scheda per iniziare</p>
+            <div class="home-cards" id="homeCards"></div>
         </div>
-        <div class="mode-card" data-speed="normal">
-          <div class="icon">⚡</div>
-          <h3>中等</h3>
-          <p>速度适中<br>有点挑战</p>
-        </div>
-        <div class="mode-card" data-speed="fast">
-          <div class="icon">🔥</div>
-          <h3>困难</h3>
-          <p>速度快<br>高手模式</p>
-        </div>
-      </div>
-      <button id="soundBtn" class="btn btn-secondary">🔊 音效：开</button>
     </div>
 
-    <!-- 游戏 -->
-    <div id="gameScreen" class="screen">
-      <h1>🐍 Emoji 贪吃蛇</h1>
-      <div class="game-layout">
-        <div class="board-wrap">
-          <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <!-- Esperienza -->
+    <div id="experience">
+        <div class="ui header">
+            <div class="header-text">
+                <h1 id="title">Fuochi d'artificio</h1>
+                <p id="subtitle">Clicca sullo schermo per far esplodere fuochi d'artificio</p>
+            </div>
+            <button class="back-btn" id="backBtn" title="Torna alla home" aria-label="Torna alla home">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 10.5 12 3l9 7.5" />
+                    <path d="M5 9.5V20h5v-6h4v6h5V9.5" />
+                </svg>
+            </button>
         </div>
-        <div class="side-panel">
-          <div class="panel-box">
-            <h4>得分</h4>
-            <div class="value" id="scoreDisplay">0</div>
-          </div>
-          <div class="panel-box">
-            <h4>最长记录</h4>
-            <div class="value" id="bestDisplay">0</div>
-          </div>
-          <div class="panel-box">
-            <h4>蛇的长度</h4>
-            <div class="value" id="lengthDisplay">3</div>
-          </div>
-          <div class="panel-box controls-hint">
-            <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 或 WASD 控制<br>
-            <kbd>P</kbd> 暂停
-          </div>
-          <div class="mobile-pad">
-            <div class="pad-btn empty"></div>
-            <button class="pad-btn" data-dir="up">↑</button>
-            <div class="pad-btn empty"></div>
-            <button class="pad-btn" data-dir="left">←</button>
-            <button class="pad-btn" data-dir="down">↓</button>
-            <button class="pad-btn" data-dir="right">→</button>
-          </div>
-          <button id="pauseBtn" class="btn btn-secondary">⏸ 暂停</button>
-          <button id="quitBtn" class="btn btn-secondary">↩ 返回菜单</button>
-        </div>
-      </div>
+
+        <div class="ui hint show" id="hint"><span id="hintText">Clicca sullo schermo per provare</span></div>
     </div>
-  </div>
 
-  <!-- 游戏结束 -->
-  <div id="gameOverOverlay" class="overlay">
-    <div class="modal">
-      <div class="big-emoji" id="overEmoji">💥</div>
-      <h2 id="overTitle">游戏结束</h2>
-      <p id="overText">再试一次吧！</p>
-      <div class="modal-actions">
-        <button id="retryBtn" class="btn btn-primary">再来一局</button>
-        <button id="menuBtn" class="btn btn-secondary">返回菜单</button>
-      </div>
-    </div>
-  </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const titleEl = document.getElementById('title');
+        const subtitleEl = document.getElementById('subtitle');
+        const hintEl = document.getElementById('hint');
+        const hintTextEl = document.getElementById('hintText');
+        const homeEl = document.getElementById('home');
+        const experienceEl = document.getElementById('experience');
+        const homeCardsEl = document.getElementById('homeCards');
+        const backBtn = document.getElementById('backBtn');
 
-  <!-- 暂停 -->
-  <div id="pauseOverlay" class="overlay">
-    <div class="modal">
-      <div class="big-emoji">⏸</div>
-      <h2>已暂停</h2>
-      <p>按 P 继续游戏</p>
-      <button id="resumeBtn" class="btn btn-primary">继续</button>
-    </div>
-  </div>
+        let W, H, mouse = { x: W / 2, y: H / 2, down: false };
+        let currentEffect = 'fireworks';
+        let isHome = true;
+        let hintTimer;
+        let homeParticles = [];
 
-  <script>
-    // ===== 音效 =====
-    const Sound = (() => {
-      let ctx = null, on = true;
-      const getCtx = () => { if (!ctx) ctx = new AudioContext(); return ctx; };
-      const resume = () => { if (ctx?.state === 'suspended') ctx.resume(); };
+        const EFFECTS = [
+            { id: 'fireworks', name: 'Fuochi d\'artificio', icon: '🎆', desc: 'Clicca per far esplodere fuochi d\'artificio con effetti sonori', subtitle: 'Clicca sullo schermo per far esplodere fuochi d\'artificio con effetti sonori', hint: 'Clicca sullo schermo per provare' },
+            { id: 'particles', name: 'Particelle del mouse', icon: '✨', desc: 'Muovi il mouse per lasciare una scia di particelle', subtitle: 'Muovi il mouse, lascia una scia di particelle colorate', hint: 'Muovi il mouse per provare' },
+            { id: 'fluid', name: 'Sfondo fluido', icon: '🌌', desc: 'Sfondo con colori fluenti da sogno', subtitle: 'Sfondo con colori fluenti da sogno', hint: 'Muovi il mouse per influenzare il fluido' },
+            { id: 'sand', name: 'Simulazione sabbia', icon: '🏜️', desc: 'Clicca per aggiungere sabbia con effetto sonoro', subtitle: 'Clicca per aggiungere sabbia con effetto sonoro', hint: 'Clicca per aggiungere sabbia' },
+            { id: 'ripples', name: 'Onde d\'acqua', icon: '💧', desc: 'Clicca sulla superficie per creare onde e suoni d\'acqua', subtitle: 'Clicca sull\'acqua per creare onde e suoni d\'acqua', hint: 'Clicca per creare onde' },
+        ];
 
-      function tone(freq, dur, vol = 0.12, type = 'sine', delay = 0) {
-        if (!on) return;
-        resume();
-        const c = getCtx();
-        const o = c.createOscillator(), g = c.createGain();
-        o.type = type; o.frequency.value = freq;
-        g.gain.setValueAtTime(vol, c.currentTime + delay);
-        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + dur);
-        o.connect(g); g.connect(c.destination);
-        o.start(c.currentTime + delay); o.stop(c.currentTime + delay + dur);
-      }
-
-      return {
-        toggle() { on = !on; return on; },
-        isOn() { return on; },
-        move() { tone(300, 0.04, 0.06); },
-        eat() { [523, 659, 784].forEach((f, i) => tone(f, 0.1, 0.1, 'sine', i * 0.07)); },
-        die() { [400, 300, 200, 150].forEach((f, i) => tone(f, 0.2, 0.1, 'sawtooth', i * 0.12)); },
-        win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.15, 0.12, 'sine', i * 0.1)); }
-      };
-    })();
-
-    // ===== 游戏配置 =====
-    const GRID = 20;
-    const CELL = 20;
-    const SPEEDS = { slow: 180, normal: 120, fast: 75 };
-    const SNAKE_EMOJI = '🐍';
-    const FOOD_EMOJIS = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍉', '🍌'];
-    const EMOJI_FONT = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", emoji, sans-serif';
-
-    let speed = 'normal';
-    let snake, dir, nextDir, food, score, best, paused, gameOver, loopTimer;
-
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-
-    // 读取最高分
-    best = parseInt(localStorage.getItem('snakeBest') || '0', 10);
-    document.getElementById('bestDisplay').textContent = best;
-
-    function randFood() {
-      let pos;
-      do {
-        pos = { x: Math.floor(Math.random() * GRID), y: Math.floor(Math.random() * GRID) };
-      } while (snake.some(s => s.x === pos.x && s.y === pos.y));
-      return { ...pos, emoji: FOOD_EMOJIS[Math.floor(Math.random() * FOOD_EMOJIS.length)] };
-    }
-
-    function initGame() {
-      snake = [
-        { x: 10, y: 10 },
-        { x: 9, y: 10 },
-        { x: 8, y: 10 }
-      ];
-      dir = { x: 1, y: 0 };
-      nextDir = { x: 1, y: 0 };
-      food = randFood();
-      score = 0;
-      paused = false;
-      gameOver = false;
-      updateUI();
-      draw();
-    }
-
-    function updateUI() {
-      document.getElementById('scoreDisplay').textContent = score;
-      document.getElementById('lengthDisplay').textContent = snake.length;
-      document.getElementById('bestDisplay').textContent = best;
-    }
-
-    function drawEmoji(x, y, emoji, size = CELL) {
-      const px = x * CELL, py = y * CELL;
-      ctx.font = `${size - 2}px ${EMOJI_FONT}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#fff';
-      ctx.fillText(emoji, px + CELL / 2, py + CELL / 2 + 1);
-    }
-
-    function draw() {
-      ctx.fillStyle = '#0d1b1e';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // 网格
-      ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-      ctx.lineWidth = 0.5;
-      for (let i = 0; i <= GRID; i++) {
-        ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, GRID * CELL); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, i * CELL); ctx.lineTo(GRID * CELL, i * CELL); ctx.stroke();
-      }
-
-      // 食物
-      drawEmoji(food.x, food.y, food.emoji);
-
-      // 蛇身
-      snake.forEach((seg, i) => {
-        if (i === 0) {
-          // 蛇头带方向感
-          ctx.fillStyle = 'rgba(120, 255, 214, 0.15)';
-          ctx.beginPath();
-          ctx.arc(seg.x * CELL + CELL / 2, seg.y * CELL + CELL / 2, CELL / 2 - 1, 0, Math.PI * 2);
-          ctx.fill();
-          drawEmoji(seg.x, seg.y, '🐲');
-        } else {
-          ctx.fillStyle = `rgba(56, 239, 125, ${0.15 + (1 - i / snake.length) * 0.2})`;
-          ctx.fillRect(seg.x * CELL + 2, seg.y * CELL + 2, CELL - 4, CELL - 4);
-          drawEmoji(seg.x, seg.y, '🟢', CELL - 4);
+        function resize() {
+            W = canvas.width = window.innerWidth;
+            H = canvas.height = window.innerHeight;
         }
-      });
-    }
 
-    function tick() {
-      if (paused || gameOver) return;
-
-      dir = nextDir;
-      const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
-
-      // 穿墙
-      if (head.x < 0) head.x = GRID - 1;
-      if (head.x >= GRID) head.x = 0;
-      if (head.y < 0) head.y = GRID - 1;
-      if (head.y >= GRID) head.y = 0;
-
-      // 撞自己
-      if (snake.some(s => s.x === head.x && s.y === head.y)) {
-        endGame();
-        return;
-      }
-
-      snake.unshift(head);
-
-      if (head.x === food.x && head.y === food.y) {
-        score += 10;
-        Sound.eat();
-        food = randFood();
-        if (score > best) {
-          best = score;
-          localStorage.setItem('snakeBest', best);
+        function showHint(text) {
+            if (!text) { hintEl.classList.remove('show'); return; }
+            hintTextEl.textContent = text;
+            hintEl.classList.add('show');
+            clearTimeout(hintTimer);
+            hintTimer = setTimeout(() => hintEl.classList.remove('show'), 3000);
         }
-        updateUI();
-      } else {
-        snake.pop();
-        Sound.move();
-      }
 
-      draw();
-    }
+        function initHomeParticles() {
+            homeParticles = [];
+            for (let i = 0; i < 100; i++) {
+                homeParticles.push({
+                    x: Math.random() * W,
+                    y: Math.random() * H,
+                    size: 0.8 + Math.random() * 2,
+                    vx: (Math.random() - 0.5) * 0.25,
+                    vy: (Math.random() - 0.5) * 0.25,
+                    hue: 200 + Math.random() * 80,
+                    alpha: 0.15 + Math.random() * 0.35
+                });
+            }
+        }
 
-    function setDirection(x, y) {
-      if (paused || gameOver) return;
-      // 不能反向
-      if (x === -dir.x && y === -dir.y && snake.length > 1) return;
-      nextDir = { x, y };
-    }
+        function updateHome() {
+            const gradient = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.7);
+            gradient.addColorStop(0, '#0d0d1a');
+            gradient.addColorStop(1, '#06060c');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, W, H);
 
-    function startLoop() {
-      clearInterval(loopTimer);
-      loopTimer = setInterval(tick, SPEEDS[speed]);
-    }
+            ctx.fillStyle = 'rgba(5, 5, 15, 0.12)';
+            ctx.fillRect(0, 0, W, H);
 
-    function startGame(selectedSpeed) {
-      speed = selectedSpeed;
-      hideOverlay('pauseOverlay');
-      hideOverlay('gameOverOverlay');
-      showScreen('gameScreen');
-      initGame();
-      startLoop();
-    }
+            homeParticles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < 0) p.x = W;
+                if (p.x > W) p.x = 0;
+                if (p.y < 0) p.y = H;
+                if (p.y > H) p.y = 0;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${p.hue}, 70%, 70%, ${p.alpha})`;
+                ctx.fill();
+            });
+        }
 
-    function endGame() {
-      gameOver = true;
-      clearInterval(loopTimer);
-      Sound.die();
+        function enterExperience(id) {
+            isHome = false;
+            homeEl.classList.add('hidden');
+            experienceEl.classList.add('active');
+            canvas.style.cursor = 'crosshair';
+            switchEffect(id || 'fireworks');
+        }
 
-      const isRecord = score > 0 && score >= best;
-      document.getElementById('overEmoji').textContent = isRecord ? '🏆' : '💥';
-      document.getElementById('overTitle').textContent = isRecord ? '新纪录！' : '游戏结束';
-      document.getElementById('overText').textContent =
-        `得分 ${score}，蛇长 ${snake.length}。${isRecord ? '太厉害了！' : '再试一次吧！'}`;
-      showOverlay('gameOverOverlay');
-    }
+        function goHome() {
+            isHome = true;
+            homeEl.classList.remove('hidden');
+            experienceEl.classList.remove('active');
+            canvas.style.cursor = 'default';
+            initHomeParticles();
+        }
 
-    function togglePause() {
-      if (gameOver) return;
-      paused = !paused;
-      if (paused) showOverlay('pauseOverlay');
-      else hideOverlay('pauseOverlay');
-    }
+        function switchEffect(id) {
+            currentEffect = id;
+            const effect = EFFECTS.find(e => e.id === id);
+            titleEl.textContent = effect.name;
+            subtitleEl.textContent = effect.subtitle;
+            initEffect(id);
+            showHint(effect.hint);
+        }
 
-    function quitToMenu() {
-      clearInterval(loopTimer);
-      gameOver = true;
-      hideOverlay('pauseOverlay');
-      hideOverlay('gameOverOverlay');
-      showScreen('menuScreen');
-    }
+        // ─── Effetti sonori fuochi d'artificio (sintesi integrata) ───
+        let audioCtx = null;
+        let masterGain = null;
+        let soundEnabled = true;
 
-    function showScreen(id) {
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      document.getElementById(id).classList.add('active');
-    }
+        function getAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = 1;
+                masterGain.connect(audioCtx.destination);
+            }
+            return audioCtx;
+        }
 
-    function showOverlay(id) { document.getElementById(id).classList.add('active'); }
-    function hideOverlay(id) { document.getElementById(id).classList.remove('active'); }
+        async function unlockAudio() {
+            const ac = getAudio();
+            if (ac.state !== 'running') {
+                await ac.resume();
+            }
+            return ac;
+        }
 
-    // ===== 事件 =====
-    document.querySelectorAll('.mode-card').forEach(card => {
-      card.addEventListener('click', () => startGame(card.dataset.speed));
-    });
+        function connectOutput(node, x) {
+            const pan = getAudio().createStereoPanner();
+            pan.pan.value = W > 0 ? Math.max(-1, Math.min(1, (x / W - 0.5) * 1.6)) : 0;
+            node.connect(pan);
+            pan.connect(masterGain);
+        }
 
-    document.getElementById('soundBtn').addEventListener('click', () => {
-      const on = Sound.toggle();
-      document.getElementById('soundBtn').textContent = on ? '🔊 音效：开' : '🔇 音效：关';
-    });
+        // Suono di lancio ad ogni clic
+        function playClickSound(x) {
+            if (!soundEnabled) return;
+            const ac = getAudio();
+            const now = ac.currentTime;
 
-    document.getElementById('pauseBtn').addEventListener('click', togglePause);
-    document.getElementById('resumeBtn').addEventListener('click', togglePause);
-    document.getElementById('quitBtn').addEventListener('click', quitToMenu);
-    document.getElementById('retryBtn').addEventListener('click', () => startGame(speed));
-    document.getElementById('menuBtn').addEventListener('click', quitToMenu);
+            const osc = ac.createOscillator();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(900, now);
+            osc.frequency.exponentialRampToValueAtTime(200, now + 0.12);
+            const oscGain = ac.createGain();
+            oscGain.gain.setValueAtTime(0.35, now);
+            oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            osc.connect(oscGain);
+            connectOutput(oscGain, x);
+            osc.start(now);
+            osc.stop(now + 0.16);
 
-    document.querySelectorAll('.pad-btn[data-dir]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const d = btn.dataset.dir;
-        if (d === 'up') setDirection(0, -1);
-        if (d === 'down') setDirection(0, 1);
-        if (d === 'left') setDirection(-1, 0);
-        if (d === 'right') setDirection(1, 0);
-      });
-    });
+            const len = Math.floor(ac.sampleRate * 0.08);
+            const buf = ac.createBuffer(1, len, ac.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+            const noise = ac.createBufferSource();
+            noise.buffer = buf;
+            const nGain = ac.createGain();
+            nGain.gain.setValueAtTime(0.2, now);
+            nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+            noise.connect(nGain);
+            connectOutput(nGain, x);
+            noise.start(now);
+            noise.stop(now + 0.09);
+        }
 
-    document.addEventListener('keydown', e => {
-      if (document.getElementById('menuScreen').classList.contains('active')) return;
-      if (e.key === 'p' || e.key === 'P') { togglePause(); return; }
-      if (paused || gameOver) return;
+        function playExplosionSound(x) {
+            if (!soundEnabled) return;
+            const ac = getAudio();
+            const now = ac.currentTime;
 
-      switch (e.key) {
-        case 'ArrowUp': case 'w': case 'W': e.preventDefault(); setDirection(0, -1); break;
-        case 'ArrowDown': case 's': case 'S': e.preventDefault(); setDirection(0, 1); break;
-        case 'ArrowLeft': case 'a': case 'A': e.preventDefault(); setDirection(-1, 0); break;
-        case 'ArrowRight': case 'd': case 'D': e.preventDefault(); setDirection(1, 0); break;
-      }
-    });
+            const boom = ac.createOscillator();
+            boom.type = 'sine';
+            boom.frequency.setValueAtTime(140 + Math.random() * 30, now);
+            boom.frequency.exponentialRampToValueAtTime(35, now + 0.5);
+            const boomGain = ac.createGain();
+            boomGain.gain.setValueAtTime(0.55, now);
+            boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+            boom.connect(boomGain);
+            connectOutput(boomGain, x);
+            boom.start(now);
+            boom.stop(now + 0.62);
 
-    document.body.addEventListener('click', () => {
-      const c = new AudioContext();
-      if (c.state === 'suspended') c.resume();
-    }, { once: true });
-  </script>
+            const burstLen = 0.22;
+            const burstBuf = ac.createBuffer(1, ac.sampleRate * burstLen, ac.sampleRate);
+            const burstData = burstBuf.getChannelData(0);
+            for (let i = 0; i < burstData.length; i++) {
+                const t = i / burstData.length;
+                burstData[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 2);
+            }
+            const burst = ac.createBufferSource();
+            burst.buffer = burstBuf;
+            const burstGain = ac.createGain();
+            burstGain.gain.setValueAtTime(0.35, now);
+            burstGain.gain.exponentialRampToValueAtTime(0.001, now + burstLen);
+            burst.connect(burstGain);
+            connectOutput(burstGain, x);
+            burst.start(now);
+            burst.stop(now + burstLen);
+
+            const pops = 5;
+            for (let i = 0; i < pops; i++) {
+                const t = now + 0.04 + i * 0.03;
+                const pop = ac.createOscillator();
+                pop.type = 'square';
+                pop.frequency.value = 800 + Math.random() * 1500;
+                const popGain = ac.createGain();
+                popGain.gain.setValueAtTime(0.03, t);
+                popGain.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+                pop.connect(popGain);
+                connectOutput(popGain, x);
+                pop.start(t);
+                pop.stop(t + 0.025);
+            }
+        }
+
+        // Suono granulare della sabbia
+        function playSandSound(x) {
+            if (!soundEnabled) return;
+            const ac = getAudio();
+            const now = ac.currentTime;
+            const duration = 0.3;
+
+            const len = Math.floor(ac.sampleRate * duration);
+            const buf = ac.createBuffer(1, len, ac.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < len; i++) {
+                const t = i / len;
+                const envelope = Math.sin(Math.PI * t);
+                d[i] = (Math.random() * 2 - 1) * envelope * envelope;
+            }
+            const noise = ac.createBufferSource();
+            noise.buffer = buf;
+            const filter = ac.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 900 + Math.random() * 600;
+            filter.Q.value = 0.7;
+            const gain = ac.createGain();
+            gain.gain.setValueAtTime(0.32, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+            noise.connect(filter);
+            filter.connect(gain);
+            connectOutput(gain, x);
+            noise.start(now);
+            noise.stop(now + duration);
+
+            const grains = 7 + Math.floor(Math.random() * 5);
+            for (let i = 0; i < grains; i++) {
+                const t = now + i * 0.022 + Math.random() * 0.018;
+                const grain = ac.createOscillator();
+                grain.type = 'square';
+                grain.frequency.value = 180 + Math.random() * 350;
+                const gGain = ac.createGain();
+                gGain.gain.setValueAtTime(0.045, t);
+                gGain.gain.exponentialRampToValueAtTime(0.001, t + 0.018);
+                grain.connect(gGain);
+                connectOutput(gGain, x);
+                grain.start(t);
+                grain.stop(t + 0.02);
+            }
+        }
+
+        // ─── File audio acqua reale ───
+        let waterFlowBuffer = null;
+
+        function loadSoundFile(url) {
+            return new Promise((resolve, reject) => {
+                const req = new XMLHttpRequest();
+                req.open('GET', url, true);
+                req.responseType = 'arraybuffer';
+                req.onload = () => {
+                    getAudio().decodeAudioData(req.response, resolve, reject);
+                };
+                req.onerror = reject;
+                req.send();
+            });
+        }
+
+        function loadWaterSounds() {
+            loadSoundFile('sounds/water-flow.mp3')
+                .then(buf => { waterFlowBuffer = buf; })
+                .catch(() => console.warn('Caricamento suoni acqua fallito, apri la pagina tramite server locale'));
+        }
+
+        function playSample(buffer, x, { offset = 0, duration, volume = 0.65, rate = 1 } = {}) {
+            const ac = getAudio();
+            const now = ac.currentTime;
+            const playDur = duration ?? Math.min(2.2, buffer.duration - offset);
+
+            const source = ac.createBufferSource();
+            source.buffer = buffer;
+            source.playbackRate.value = rate;
+
+            const gain = ac.createGain();
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.exponentialRampToValueAtTime(volume, now + 0.04);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + playDur);
+
+            source.connect(gain);
+            connectOutput(gain, x);
+            source.start(now, offset, playDur);
+        }
+
+        // Onde d'acqua — registrazione acqua reale
+        function playRippleSound(x) {
+            if (!soundEnabled) return;
+
+            if (waterFlowBuffer) {
+                const maxOffset = Math.max(0, waterFlowBuffer.duration - 2.5);
+                const offset = Math.random() * maxOffset;
+                playSample(waterFlowBuffer, x, {
+                    offset,
+                    duration: 1.6 + Math.random() * 0.6,
+                    volume: 0.55 + Math.random() * 0.15,
+                    rate: 0.92 + Math.random() * 0.12
+                });
+                return;
+            }
+
+            const fallback = new Audio('sounds/water-flow.mp3');
+            fallback.volume = 0.55;
+            fallback.currentTime = Math.random() * 3;
+            fallback.play().catch(() => { });
+        }
+
+        // ─── Fuochi d'artificio ───
+        let fireworks = [], sparks = [];
+
+        function initFireworks() {
+            fireworks = [];
+            sparks = [];
+        }
+
+        function launchFirework(x, y) {
+            const hue = Math.random() * 360;
+            fireworks.push({
+                x, y: H,
+                tx: x + (Math.random() - 0.5) * 80,
+                ty: y,
+                speed: 8 + Math.random() * 4,
+                hue,
+                soundX: x,
+                trail: []
+            });
+        }
+
+        function explode(x, y, hue, soundX) {
+            playExplosionSound(soundX ?? x);
+            const count = 60 + Math.floor(Math.random() * 40);
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+                const speed = 2 + Math.random() * 5;
+                sparks.push({
+                    x, y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    hue: hue + Math.random() * 30 - 15,
+                    life: 1,
+                    decay: 0.002 + Math.random() * 0.003,
+                    size: 1.5 + Math.random() * 2
+                });
+            }
+        }
+
+        function updateFireworks() {
+            ctx.fillStyle = 'rgba(5, 5, 15, 0.08)';
+            ctx.fillRect(0, 0, W, H);
+
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                const fw = fireworks[i];
+                fw.trail.push({ x: fw.x, y: fw.y });
+                if (fw.trail.length > 8) fw.trail.shift();
+                const dx = fw.tx - fw.x;
+                const dy = fw.ty - fw.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist < fw.speed) {
+                    explode(fw.x, fw.y, fw.hue, fw.soundX);
+                    fireworks.splice(i, 1);
+                    continue;
+                }
+                if (dist > 0) {
+                    fw.x += (dx / dist) * fw.speed;
+                    fw.y += (dy / dist) * fw.speed;
+                }
+
+                fw.trail.forEach((t, j) => {
+                    ctx.beginPath();
+                    ctx.arc(t.x, t.y, 1.5, 0, Math.PI * 2);
+                    ctx.fillStyle = `hsla(${fw.hue}, 100%, 70%, ${j / fw.trail.length * 0.6})`;
+                    ctx.fill();
+                });
+                ctx.beginPath();
+                ctx.arc(fw.x, fw.y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = `hsl(${fw.hue}, 100%, 80%)`;
+                ctx.fill();
+            }
+
+            sparks.forEach((s, i) => {
+                s.x += s.vx;
+                s.y += s.vy;
+                s.vy += 0.025;
+                s.vx *= 0.99;
+                s.life -= s.decay;
+                if (s.life <= 0) { sparks.splice(i, 1); return; }
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size * s.life, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${s.hue}, 100%, 65%, ${s.life})`;
+                ctx.fill();
+            });
+        }
+
+        // ─── Particelle del mouse ───
+        let trailParticles = [];
+
+        function initParticles() {
+            trailParticles = [];
+        }
+
+        function updateParticles() {
+            ctx.fillStyle = 'rgba(5, 5, 15, 0.15)';
+            ctx.fillRect(0, 0, W, H);
+
+            if (mouse.x > 0 && mouse.y > 0) {
+                for (let i = 0; i < 3; i++) {
+                    trailParticles.push({
+                        x: mouse.x + (Math.random() - 0.5) * 20,
+                        y: mouse.y + (Math.random() - 0.5) * 20,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2,
+                        hue: (Date.now() / 20 + Math.random() * 60) % 360,
+                        life: 1,
+                        size: 2 + Math.random() * 4
+                    });
+                }
+            }
+
+            trailParticles.forEach((p, i) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.015;
+                p.size *= 0.99;
+                if (p.life <= 0) { trailParticles.splice(i, 1); return; }
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${p.hue}, 90%, 65%, ${p.life * 0.8})`;
+                ctx.fill();
+            });
+        }
+
+        // ─── Sfondo fluido ───
+        let fluidParticles = [];
+
+        function initFluid() {
+            fluidParticles = [];
+            for (let i = 0; i < 120; i++) {
+                fluidParticles.push({
+                    x: Math.random() * W,
+                    y: Math.random() * H,
+                    vx: 0, vy: 0,
+                    hue: Math.random() * 60 + 200,
+                    size: 20 + Math.random() * 40
+                });
+            }
+        }
+
+        function updateFluid() {
+            ctx.fillStyle = 'rgba(5, 5, 20, 0.08)';
+            ctx.fillRect(0, 0, W, H);
+
+            const time = Date.now() * 0.001;
+            fluidParticles.forEach(p => {
+                const angle = Math.sin(p.x * 0.005 + time) * Math.cos(p.y * 0.005 + time * 0.7) * Math.PI * 2;
+                p.vx += Math.cos(angle) * 0.3;
+                p.vy += Math.sin(angle) * 0.3;
+
+                const mdx = mouse.x - p.x;
+                const mdy = mouse.y - p.y;
+                const mdist = Math.hypot(mdx, mdy);
+                if (mdist < 200 && mdist > 0) {
+                    p.vx += (mdx / mdist) * 0.8;
+                    p.vy += (mdy / mdist) * 0.8;
+                }
+
+                p.vx *= 0.92;
+                p.vy *= 0.92;
+                p.x += p.vx;
+                p.y += p.vy;
+
+                if (p.x < 0) p.x = W;
+                if (p.x > W) p.x = 0;
+                if (p.y < 0) p.y = H;
+                if (p.y > H) p.y = 0;
+
+                const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+                gradient.addColorStop(0, `hsla(${p.hue + time * 10}, 80%, 60%, 0.15)`);
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
+            });
+        }
+
+        // ─── Simulazione sabbia ───
+        const SAND_CELL = 3;
+        let sandGrid, sandCols, sandRows;
+
+        function initSand() {
+            sandCols = Math.ceil(W / SAND_CELL);
+            sandRows = Math.ceil(H / SAND_CELL);
+            sandGrid = new Uint8Array(sandCols * sandRows);
+        }
+
+        function sandIndex(x, y) {
+            return y * sandCols + x;
+        }
+
+        function addSand(cx, cy, radius) {
+            const r = radius || 8;
+            for (let dy = -r; dy <= r; dy++) {
+                for (let dx = -r; dx <= r; dx++) {
+                    if (dx * dx + dy * dy <= r * r) {
+                        const gx = Math.floor((cx + dx * SAND_CELL) / SAND_CELL);
+                        const gy = Math.floor((cy + dy * SAND_CELL) / SAND_CELL);
+                        if (gx >= 0 && gx < sandCols && gy >= 0 && gy < sandRows) {
+                            sandGrid[sandIndex(gx, gy)] = 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        function updateSand() {
+            for (let y = sandRows - 2; y >= 0; y--) {
+                for (let x = 0; x < sandCols; x++) {
+                    const i = sandIndex(x, y);
+                    if (!sandGrid[i]) continue;
+                    const below = sandIndex(x, y + 1);
+                    if (!sandGrid[below]) {
+                        sandGrid[i] = 0;
+                        sandGrid[below] = 1;
+                    } else {
+                        const dir = Math.random() < 0.5 ? -1 : 1;
+                        const nx = x + dir;
+                        if (nx >= 0 && nx < sandCols && !sandGrid[sandIndex(nx, y + 1)]) {
+                            sandGrid[i] = 0;
+                            sandGrid[sandIndex(nx, y + 1)] = 1;
+                        }
+                    }
+                }
+            }
+
+            ctx.fillStyle = '#1a1510';
+            ctx.fillRect(0, 0, W, H);
+
+            for (let y = 0; y < sandRows; y++) {
+                for (let x = 0; x < sandCols; x++) {
+                    if (sandGrid[sandIndex(x, y)]) {
+                        const shade = 180 + Math.floor(Math.random() * 40);
+                        ctx.fillStyle = `rgb(${shade}, ${shade - 30}, ${shade - 60})`;
+                        ctx.fillRect(x * SAND_CELL, y * SAND_CELL, SAND_CELL, SAND_CELL);
+                    }
+                }
+            }
+        }
+
+        // ─── Onde d'acqua ───
+        let ripples = [];
+
+        function initRipples() {
+            ripples = [];
+        }
+
+        function addRipple(x, y) {
+            ripples.push({ x, y, radius: 0, maxRadius: 80 + Math.random() * 60, life: 1 });
+        }
+
+        function updateRipples() {
+            const time = Date.now() * 0.001;
+            const gradient = ctx.createLinearGradient(0, 0, 0, H);
+            gradient.addColorStop(0, '#0a1628');
+            gradient.addColorStop(1, '#0d2847');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, W, H);
+
+            // Riflessi sulla superficie dell'acqua
+            for (let i = 0; i < 5; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, H * 0.3 + i * 40 + Math.sin(time + i) * 10);
+                for (let x = 0; x <= W; x += 20) {
+                    ctx.lineTo(x, H * 0.3 + i * 40 + Math.sin(x * 0.01 + time + i) * 8);
+                }
+                ctx.strokeStyle = `rgba(100, 180, 255, ${0.03 + i * 0.01})`;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            ripples.forEach((r, i) => {
+                r.radius += 2;
+                r.life = 1 - r.radius / r.maxRadius;
+                if (r.life <= 0) { ripples.splice(i, 1); return; }
+
+                ctx.beginPath();
+                ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(150, 220, 255, ${r.life * 0.6})`;
+                ctx.lineWidth = 2 * r.life;
+                ctx.stroke();
+
+                if (r.radius > 10) {
+                    ctx.beginPath();
+                    ctx.arc(r.x, r.y, r.radius * 0.6, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(150, 220, 255, ${r.life * 0.3})`;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            });
+        }
+
+        // ─── Ciclo principale ───
+        const updaters = {
+            fireworks: updateFireworks,
+            particles: updateParticles,
+            fluid: updateFluid,
+            sand: updateSand,
+            ripples: updateRipples
+        };
+
+        const inits = {
+            fireworks: initFireworks,
+            particles: initParticles,
+            fluid: initFluid,
+            sand: initSand,
+            ripples: initRipples
+        };
+
+        function initEffect(id) {
+            if (inits[id]) inits[id]();
+        }
+
+        function loop() {
+            if (isHome) {
+                updateHome();
+            } else if (updaters[currentEffect]) {
+                updaters[currentEffect]();
+            }
+            requestAnimationFrame(loop);
+        }
+
+        function fireFirework(x, y) {
+            unlockAudio().then(() => {
+                playClickSound(x);
+                launchFirework(x, y);
+            });
+        }
+
+        function pourSand(x, y) {
+            unlockAudio().then(() => {
+                playSandSound(x);
+                addSand(x, y);
+            });
+        }
+
+        function dropRipple(x, y) {
+            unlockAudio().then(() => {
+                playRippleSound(x);
+                addRipple(x, y);
+            });
+        }
+
+        // ─── Eventi ───
+        canvas.addEventListener('click', (e) => {
+            if (isHome) return;
+            const x = e.clientX, y = e.clientY;
+            if (currentEffect === 'fireworks') fireFirework(x, y);
+            if (currentEffect === 'sand') pourSand(x, y);
+            if (currentEffect === 'ripples') dropRipple(x, y);
+            hintEl.classList.remove('show');
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        window.addEventListener('resize', () => {
+            resize();
+            if (isHome) initHomeParticles();
+            else initEffect(currentEffect);
+        });
+
+        backBtn.addEventListener('click', goHome);
+
+        // ─── Schede home ───
+        EFFECTS.forEach(e => {
+            const card = document.createElement('button');
+            card.className = 'home-card';
+            card.innerHTML = `<span class="home-card-icon">${e.icon}</span><div class="home-card-name">${e.name}</div><div class="home-card-desc">${e.desc}</div>`;
+            card.addEventListener('click', () => enterExperience(e.id));
+            homeCardsEl.appendChild(card);
+        });
+
+        resize();
+        loadWaterSounds();
+        initHomeParticles();
+        loop();
+    </script>
 </body>
+
 </html>
