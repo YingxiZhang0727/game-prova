@@ -828,56 +828,142 @@
             }
         }
 
-        // ─── Onde d'acqua ───
-        let ripples = [];
+        // ─── Onde d'acqua (simulazione fisica) ───
+        const RIPPLE_CELL = 4;
+        let rippleCols, rippleRows;
+        let rippleCur, ripplePrev;
+        let waterBgData = null;
 
         function initRipples() {
-            ripples = [];
+            rippleCols = Math.ceil(W / RIPPLE_CELL) + 2;
+            rippleRows = Math.ceil(H / RIPPLE_CELL) + 2;
+            rippleCur = new Float32Array(rippleCols * rippleRows);
+            ripplePrev = new Float32Array(rippleCols * rippleRows);
+            buildWaterBackground();
         }
 
-        function addRipple(x, y) {
-            ripples.push({ x, y, radius: 0, maxRadius: 80 + Math.random() * 60, life: 1 });
+        function rIdx(x, y) {
+            return y * rippleCols + x;
+        }
+
+        function buildWaterBackground() {
+            const bg = document.createElement('canvas');
+            bg.width = W;
+            bg.height = H;
+            const bctx = bg.getContext('2d');
+            const grad = bctx.createLinearGradient(0, 0, 0, H);
+            grad.addColorStop(0, '#061828');
+            grad.addColorStop(0.4, '#0a2848');
+            grad.addColorStop(1, '#0d3560');
+            bctx.fillStyle = grad;
+            bctx.fillRect(0, 0, W, H);
+
+            const time = Date.now() * 0.001;
+            for (let i = 0; i < 6; i++) {
+                bctx.beginPath();
+                bctx.moveTo(0, H * 0.25 + i * 55 + Math.sin(time + i) * 8);
+                for (let x = 0; x <= W; x += 16) {
+                    bctx.lineTo(x, H * 0.25 + i * 55 + Math.sin(x * 0.008 + time * 0.6 + i) * 6);
+                }
+                bctx.strokeStyle = `rgba(100, 190, 255, ${0.04 + i * 0.008})`;
+                bctx.lineWidth = 1.5;
+                bctx.stroke();
+            }
+
+            for (let i = 0; i < 50; i++) {
+                const px = Math.random() * W;
+                const py = Math.random() * H;
+                const r = 30 + Math.random() * 90;
+                const g = bctx.createRadialGradient(px, py, 0, px, py, r);
+                g.addColorStop(0, `rgba(130, 210, 255, ${0.02 + Math.random() * 0.03})`);
+                g.addColorStop(1, 'transparent');
+                bctx.fillStyle = g;
+                bctx.fillRect(px - r, py - r, r * 2, r * 2);
+            }
+
+            waterBgData = bctx.getImageData(0, 0, W, H).data;
+        }
+
+        function addRipple(cx, cy) {
+            const gx = Math.floor(cx / RIPPLE_CELL);
+            const gy = Math.floor(cy / RIPPLE_CELL);
+            const strength = 360;
+            const radius = 5;
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    const x = gx + dx, y = gy + dy;
+                    if (x > 0 && x < rippleCols - 1 && y > 0 && y < rippleRows - 1) {
+                        const d = dx * dx + dy * dy;
+                        if (d <= radius * radius) {
+                            rippleCur[rIdx(x, y)] += strength * (1 - d / (radius * radius));
+                        }
+                    }
+                }
+            }
+        }
+
+        function stepRippleSimulation() {
+            const damping = 0.978;
+            for (let y = 1; y < rippleRows - 1; y++) {
+                for (let x = 1; x < rippleCols - 1; x++) {
+                    const i = rIdx(x, y);
+                    const val = (
+                        rippleCur[rIdx(x - 1, y)] +
+                        rippleCur[rIdx(x + 1, y)] +
+                        rippleCur[rIdx(x, y - 1)] +
+                        rippleCur[rIdx(x, y + 1)]
+                    ) * 0.5 - ripplePrev[i];
+                    ripplePrev[i] = val * damping;
+                }
+            }
+            const tmp = rippleCur;
+            rippleCur = ripplePrev;
+            ripplePrev = tmp;
+        }
+
+        function renderRippleSurface() {
+            if (!waterBgData) return;
+            const imageData = ctx.createImageData(W, H);
+            const out = imageData.data;
+            const bg = waterBgData;
+            const disp = 0.14;
+            const step = W > 1200 ? 2 : 1;
+
+            for (let y = 0; y < H; y += step) {
+                const gy = Math.min(rippleRows - 2, Math.max(1, Math.floor(y / RIPPLE_CELL)));
+                for (let x = 0; x < W; x += step) {
+                    const gx = Math.min(rippleCols - 2, Math.max(1, Math.floor(x / RIPPLE_CELL)));
+                    const ri = rIdx(gx, gy);
+                    const dx = (rippleCur[rIdx(gx + 1, gy)] - rippleCur[rIdx(gx - 1, gy)]) * disp;
+                    const dy = (rippleCur[rIdx(gx, gy + 1)] - rippleCur[rIdx(gx, gy - 1)]) * disp;
+
+                    const sx = Math.max(0, Math.min(W - 1, (x + dx) | 0));
+                    const sy = Math.max(0, Math.min(H - 1, (y + dy) | 0));
+                    const si = (sy * W + sx) * 4;
+
+                    const h = rippleCur[ri];
+                    const spec = Math.max(-20, Math.min(60, h * 0.18));
+                    const r = Math.max(0, Math.min(255, bg[si] + spec * 0.3));
+                    const g = Math.max(0, Math.min(255, bg[si + 1] + spec * 0.5));
+                    const b = Math.max(0, Math.min(255, bg[si + 2] + spec * 0.9));
+
+                    for (let py = 0; py < step && y + py < H; py++) {
+                        for (let px = 0; px < step && x + px < W; px++) {
+                            const oi = ((y + py) * W + (x + px)) * 4;
+                            out[oi] = r;
+                            out[oi + 1] = g;
+                            out[oi + 2] = b;
+                            out[oi + 3] = 255;
+                        }
+                    }
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
         }
 
         function updateRipples() {
-            const time = Date.now() * 0.001;
-            const gradient = ctx.createLinearGradient(0, 0, 0, H);
-            gradient.addColorStop(0, '#0a1628');
-            gradient.addColorStop(1, '#0d2847');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, W, H);
-
-            // Riflessi sulla superficie dell'acqua
-            for (let i = 0; i < 5; i++) {
-                ctx.beginPath();
-                ctx.moveTo(0, H * 0.3 + i * 40 + Math.sin(time + i) * 10);
-                for (let x = 0; x <= W; x += 20) {
-                    ctx.lineTo(x, H * 0.3 + i * 40 + Math.sin(x * 0.01 + time + i) * 8);
-                }
-                ctx.strokeStyle = `rgba(100, 180, 255, ${0.03 + i * 0.01})`;
-                ctx.lineWidth = 1;
-                ctx.stroke();
-            }
-
-            ripples.forEach((r, i) => {
-                r.radius += 2;
-                r.life = 1 - r.radius / r.maxRadius;
-                if (r.life <= 0) { ripples.splice(i, 1); return; }
-
-                ctx.beginPath();
-                ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
-                ctx.strokeStyle = `rgba(150, 220, 255, ${r.life * 0.6})`;
-                ctx.lineWidth = 2 * r.life;
-                ctx.stroke();
-
-                if (r.radius > 10) {
-                    ctx.beginPath();
-                    ctx.arc(r.x, r.y, r.radius * 0.6, 0, Math.PI * 2);
-                    ctx.strokeStyle = `rgba(150, 220, 255, ${r.life * 0.3})`;
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
-                }
-            });
+            stepRippleSimulation();
+            renderRippleSurface();
         }
 
         // ─── Ciclo principale ───
