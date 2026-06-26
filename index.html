@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji 俄罗斯方块</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            background: linear-gradient(90deg, #f9d423, #ff4e50, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 2px;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* 菜单 */
+        .subtitle {
+            color: #a0aec0;
+            font-size: 0.95rem;
+        }
+
+        .mode-cards {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .mode-card {
+            width: 160px;
+            padding: 24px 16px;
+            border-radius: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            text-align: center;
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .mode-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .mode-card .emoji {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+        }
+
+        .mode-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 6px;
+        }
+
+        .mode-card p {
+            font-size: 0.8rem;
+            color: #a0aec0;
+            line-height: 1.5;
+        }
+
+        .mode-card.easy:hover {
+            border-color: #48bb78;
+        }
+
+        .mode-card.medium:hover {
+            border-color: #ecc94b;
+        }
+
+        .mode-card.hard:hover {
+            border-color: #fc8181;
+        }
+
+        /* 游戏区 */
+        .game-layout {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .board-wrap {
+            position: relative;
+            border-radius: 12px;
+            padding: 4px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            box-shadow: 0 0 40px rgba(102, 126, 234, 0.3);
+        }
+
+        #gameCanvas {
+            display: block;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            min-width: 150px;
+        }
+
+        .panel-box {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 14px;
+            backdrop-filter: blur(8px);
+        }
+
+        .panel-box h4 {
+            font-size: 0.75rem;
+            color: #a0aec0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .panel-box .value {
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        #nextCanvas {
+            display: block;
+            margin: 0 auto;
+        }
+
+        .controls-hint {
+            font-size: 0.75rem;
+            color: #718096;
+            line-height: 1.8;
+        }
+
+        .controls-hint kbd {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            font-family: inherit;
+            font-size: 0.7rem;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: transform 0.15s, opacity 0.15s;
+            color: #fff;
+        }
+
+        .btn:hover {
+            transform: scale(1.04);
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-sound {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            font-size: 0.85rem;
+        }
+
+        /* 弹窗 */
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: linear-gradient(145deg, #1e2a4a, #16213e);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 36px 40px;
+            text-align: center;
+            max-width: 380px;
+            animation: popIn 0.35s ease;
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal .big-emoji {
+            font-size: 4rem;
+            margin-bottom: 12px;
+        }
+
+        .modal h2 {
+            font-size: 1.6rem;
+            margin-bottom: 8px;
+        }
+
+        .modal p {
+            color: #a0aec0;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #48bb78, #38b2ac);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .level-info {
+            font-size: 0.85rem;
+            color: #a0aec0;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <!-- 开始菜单 -->
+        <div id="menuScreen" class="screen active">
+            <h1>🎮 Emoji 俄罗斯方块</h1>
+            <p class="subtitle">消除行数来闯关，选择你的难度！</p>
+            <div class="mode-cards">
+                <div class="mode-card easy" data-mode="easy">
+                    <div class="emoji">🌱</div>
+                    <h3>简单</h3>
+                    <p>3 关 · 速度慢<br>每关消 5 行</p>
+                </div>
+                <div class="mode-card medium" data-mode="medium">
+                    <div class="emoji">⚡</div>
+                    <h3>中等</h3>
+                    <p>5 关 · 速度适中<br>每关消 8 行</p>
+                </div>
+                <div class="mode-card hard" data-mode="hard">
+                    <div class="emoji">🔥</div>
+                    <h3>困难</h3>
+                    <p>5 关 · 速度快<br>每关消 10 行</p>
+                </div>
+            </div>
+            <button id="soundToggleMenu" class="btn btn-sound">🔊 音效：开</button>
+        </div>
+
+        <!-- 游戏界面 -->
+        <div id="gameScreen" class="screen">
+            <h1>Emoji 俄罗斯方块</h1>
+            <div class="game-layout">
+                <div class="board-wrap">
+                    <canvas id="gameCanvas" width="300" height="600"></canvas>
+                </div>
+                <div class="side-panel">
+                    <div class="panel-box">
+                        <h4>关卡</h4>
+                        <div class="value" id="levelDisplay">1</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill" style="width:0%"></div>
+                        </div>
+                        <div class="level-info" id="levelInfo">0 / 5 行</div>
+                    </div>
+                    <div class="panel-box">
+                        <h4>分数</h4>
+                        <div class="value" id="scoreDisplay">0</div>
+                    </div>
+                    <div class="panel-box">
+                        <h4>下一个</h4>
+                        <canvas id="nextCanvas" width="120" height="120"></canvas>
+                    </div>
+                    <div class="panel-box controls-hint">
+                        <kbd>←</kbd><kbd>→</kbd> 移动<br>
+                        <kbd>↑</kbd> 旋转<br>
+                        <kbd>↓</kbd> 加速下落<br>
+                        <kbd>空格</kbd> 瞬间落下<br>
+                        <kbd>P</kbd> 暂停
+                    </div>
+                    <button id="pauseBtn" class="btn btn-secondary">⏸ 暂停</button>
+                    <button id="quitBtn" class="btn btn-secondary">↩ 返回菜单</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 关卡胜利 -->
+    <div id="levelWinOverlay" class="overlay">
+        <div class="modal">
+            <div class="big-emoji">🎉</div>
+            <h2>关卡通过！</h2>
+            <p id="levelWinText">太棒了，准备进入下一关！</p>
+            <div class="modal-actions">
+                <button id="nextLevelBtn" class="btn btn-primary">下一关 →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 全部通关 -->
+    <div id="gameWinOverlay" class="overlay">
+        <div class="modal">
+            <div class="big-emoji">🏆</div>
+            <h2>恭喜通关！</h2>
+            <p id="gameWinText">你完成了所有关卡！</p>
+            <div class="modal-actions">
+                <button id="playAgainBtn" class="btn btn-primary">再玩一次</button>
+                <button id="backMenuBtn" class="btn btn-secondary">返回菜单</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏结束 -->
+    <div id="gameOverOverlay" class="overlay">
+        <div class="modal">
+            <div class="big-emoji">😢</div>
+            <h2>游戏结束</h2>
+            <p id="gameOverText">方块堆满了，再试一次吧！</p>
+            <div class="modal-actions">
+                <button id="retryBtn" class="btn btn-primary">重新挑战</button>
+                <button id="backMenuBtn2" class="btn btn-secondary">返回菜单</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 暂停 -->
+    <div id="pauseOverlay" class="overlay">
+        <div class="modal">
+            <div class="big-emoji">⏸</div>
+            <h2>已暂停</h2>
+            <p>按 P 或点击继续按钮恢复游戏</p>
+            <div class="modal-actions">
+                <button id="resumeBtn" class="btn btn-primary">继续游戏</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 音效系统（Web Audio API，无需外部文件）==========
+        const AudioFX = (() => {
+            let ctx = null;
+            let enabled = true;
+            let bgmOsc = null;
+            let bgmGain = null;
+            let bgmInterval = null;
+
+            function getCtx() {
+                if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+                return ctx;
+            }
+
+            function resume() {
+                if (ctx && ctx.state === 'suspended') ctx.resume();
+            }
+
+            function playTone(freq, duration, type = 'sine', volume = 0.15, delay = 0) {
+                if (!enabled) return;
+                resume();
+                const c = getCtx();
+                const osc = c.createOscillator();
+                const gain = c.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(volume, c.currentTime + delay);
+                gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + duration);
+                osc.connect(gain);
+                gain.connect(c.destination);
+                osc.start(c.currentTime + delay);
+                osc.stop(c.currentTime + delay + duration);
+            }
+
+            return {
+                setEnabled(v) { enabled = v; if (!v) this.stopBGM(); },
+                isEnabled() { return enabled; },
+
+                // 方块下落音效
+                fall() { playTone(220, 0.06, 'triangle', 0.08); },
+
+                // 方块落地
+                land() { playTone(150, 0.12, 'square', 0.1); playTone(100, 0.15, 'sine', 0.08, 0.05); },
+
+                // 移动
+                move() { playTone(300, 0.04, 'sine', 0.06); },
+
+                // 旋转
+                rotate() { playTone(400, 0.05, 'sine', 0.07); playTone(500, 0.05, 'sine', 0.05, 0.03); },
+
+                // 消行
+                clearLines(count) {
+                    const freqs = [523, 659, 784, 1047];
+                    for (let i = 0; i < count; i++) {
+                        playTone(freqs[i] || 1047, 0.15, 'sine', 0.12, i * 0.1);
+                    }
+                },
+
+                // 关卡胜利
+                levelWin() {
+                    const melody = [523, 659, 784, 1047, 784, 1047, 1319];
+                    melody.forEach((f, i) => playTone(f, 0.2, 'sine', 0.15, i * 0.15));
+                },
+
+                // 全部通关
+                gameWin() {
+                    const melody = [523, 587, 659, 784, 880, 1047, 1175, 1319];
+                    melody.forEach((f, i) => playTone(f, 0.25, 'sine', 0.18, i * 0.12));
+                    setTimeout(() => {
+                        [1047, 1319, 1568].forEach((f, i) => playTone(f, 0.4, 'sine', 0.2, i * 0.2));
+                    }, 1200);
+                },
+
+                // 游戏结束
+                gameOver() {
+                    [400, 350, 300, 250, 200].forEach((f, i) => playTone(f, 0.3, 'sawtooth', 0.1, i * 0.15));
+                },
+
+                // 背景音乐（轻快的节奏）
+                startBGM() {
+                    if (!enabled || bgmInterval) return;
+                    resume();
+                    const c = getCtx();
+                    bgmGain = c.createGain();
+                    bgmGain.gain.value = 0.04;
+                    bgmGain.connect(c.destination);
+
+                    const notes = [262, 294, 330, 349, 392, 349, 330, 294];
+                    let idx = 0;
+                    bgmInterval = setInterval(() => {
+                        if (!enabled) return;
+                        const osc = c.createOscillator();
+                        const g = c.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.value = notes[idx % notes.length];
+                        g.gain.setValueAtTime(0.06, c.currentTime);
+                        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.3);
+                        osc.connect(g);
+                        g.connect(bgmGain);
+                        osc.start();
+                        osc.stop(c.currentTime + 0.3);
+                        idx++;
+                    }, 400);
+                },
+
+                stopBGM() {
+                    if (bgmInterval) { clearInterval(bgmInterval); bgmInterval = null; }
+                }
+            };
+        })();
+
+        // ========== 游戏配置 ==========
+        const MODES = {
+            easy: { totalLevels: 3, linesPerLevel: 5, baseSpeed: 800, speedDecrease: 60 },
+            medium: { totalLevels: 5, linesPerLevel: 8, baseSpeed: 600, speedDecrease: 50 },
+            hard: { totalLevels: 5, linesPerLevel: 10, baseSpeed: 400, speedDecrease: 40 }
+        };
+
+        const COLS = 10;
+        const ROWS = 20;
+        const CELL = 30;
+
+        // 方块形状 + 对应 emoji
+        const SHAPES = [
+            { shape: [[1, 1, 1, 1]], emoji: '🍎', color: '#e53e3e' },
+            { shape: [[1, 1], [1, 1]], emoji: '🍊', color: '#dd6b20' },
+            { shape: [[0, 1, 0], [1, 1, 1]], emoji: '🍋', color: '#d69e2e' },
+            { shape: [[0, 1, 1], [1, 1, 0]], emoji: '🍇', color: '#805ad5' },
+            { shape: [[1, 1, 0], [0, 1, 1]], emoji: '🍓', color: '#e53e3e' },
+            { shape: [[1, 0, 0], [1, 1, 1]], emoji: '🥝', color: '#38a169' },
+            { shape: [[0, 0, 1], [1, 1, 1]], emoji: '🍑', color: '#ed8936' }
+        ];
+
+        // ========== 游戏状态 ==========
+        let mode = 'easy';
+        let board = [];
+        let current = null;
+        let next = null;
+        let score = 0;
+        let level = 1;
+        let linesCleared = 0;
+        let linesThisLevel = 0;
+        let gameLoop = null;
+        let dropInterval = 800;
+        let lastDrop = 0;
+        let paused = false;
+        let gameOver = false;
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const nextCanvas = document.getElementById('nextCanvas');
+        const nextCtx = nextCanvas.getContext('2d');
+
+        // ========== 工具函数 ==========
+        function createBoard() {
+            return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+        }
+
+        function randomPiece() {
+            const idx = Math.floor(Math.random() * SHAPES.length);
+            const s = SHAPES[idx];
+            return {
+                shape: s.shape.map(r => [...r]),
+                emoji: s.emoji,
+                color: s.color,
+                x: Math.floor(COLS / 2) - Math.ceil(s.shape[0].length / 2),
+                y: 0
+            };
+        }
+
+        function rotateMatrix(matrix) {
+            const rows = matrix.length;
+            const cols = matrix[0].length;
+            const rotated = Array.from({ length: cols }, () => Array(rows).fill(0));
+            for (let r = 0; r < rows; r++)
+                for (let c = 0; c < cols; c++)
+                    rotated[c][rows - 1 - r] = matrix[r][c];
+            return rotated;
+        }
+
+        function collides(piece, offsetX = 0, offsetY = 0, shape = piece.shape) {
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[r].length; c++) {
+                    if (!shape[r][c]) continue;
+                    const nx = piece.x + c + offsetX;
+                    const ny = piece.y + r + offsetY;
+                    if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
+                    if (ny >= 0 && board[ny][nx]) return true;
+                }
+            }
+            return false;
+        }
+
+        function lockPiece() {
+            for (let r = 0; r < current.shape.length; r++) {
+                for (let c = 0; c < current.shape[r].length; c++) {
+                    if (!current.shape[r][c]) continue;
+                    const ny = current.y + r;
+                    const nx = current.x + c;
+                    if (ny < 0) { endGame(); return; }
+                    board[ny][nx] = { emoji: current.emoji, color: current.color };
+                }
+            }
+            AudioFX.land();
+            clearLines();
+            spawnPiece();
+        }
+
+        function clearLines() {
+            let cleared = 0;
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (board[r].every(cell => cell !== null)) {
+                    board.splice(r, 1);
+                    board.unshift(Array(COLS).fill(null));
+                    cleared++;
+                    r++;
+                }
+            }
+            if (cleared > 0) {
+                AudioFX.clearLines(cleared);
+                const points = [0, 100, 300, 500, 800];
+                score += (points[cleared] || 800) * level;
+                linesCleared += cleared;
+                linesThisLevel += cleared;
+                updateUI();
+                checkLevelComplete();
+            }
+        }
+
+        function checkLevelComplete() {
+            const cfg = MODES[mode];
+            if (linesThisLevel >= cfg.linesPerLevel) {
+                paused = true;
+                AudioFX.stopBGM();
+                AudioFX.levelWin();
+                if (level >= cfg.totalLevels) {
+                    setTimeout(() => {
+                        document.getElementById('gameWinText').textContent =
+                            `${mode === 'easy' ? '简单' : mode === 'medium' ? '中等' : '困难'}模式全部通关！最终得分：${score}`;
+                        showOverlay('gameWinOverlay');
+                        AudioFX.gameWin();
+                    }, 800);
+                } else {
+                    document.getElementById('levelWinText').textContent =
+                        `第 ${level} 关完成！得分：${score}`;
+                    setTimeout(() => showOverlay('levelWinOverlay'), 600);
+                }
+            }
+        }
+
+        function spawnPiece() {
+            current = next || randomPiece();
+            next = randomPiece();
+            if (collides(current)) endGame();
+            drawNext();
+        }
+
+        function getDropSpeed() {
+            const cfg = MODES[mode];
+            return Math.max(100, cfg.baseSpeed - (level - 1) * cfg.speedDecrease);
+        }
+
+        function movePiece(dx, dy) {
+            if (!collides(current, dx, dy)) {
+                current.x += dx;
+                current.y += dy;
+                if (dx !== 0) AudioFX.move();
+                return true;
+            }
+            return false;
+        }
+
+        function rotatePiece() {
+            const rotated = rotateMatrix(current.shape);
+            if (!collides(current, 0, 0, rotated)) {
+                current.shape = rotated;
+                AudioFX.rotate();
+            }
+        }
+
+        function hardDrop() {
+            while (movePiece(0, 1)) AudioFX.fall();
+            lockPiece();
+        }
+
+        function softDrop() {
+            if (movePiece(0, 1)) {
+                AudioFX.fall();
+                score += 1;
+                updateUI();
+            } else {
+                lockPiece();
+            }
+        }
+
+        function endGame() {
+            gameOver = true;
+            paused = true;
+            AudioFX.stopBGM();
+            AudioFX.gameOver();
+            document.getElementById('gameOverText').textContent =
+                `在第 ${level} 关失败了，得分：${score}`;
+            showOverlay('gameOverOverlay');
+        }
+
+        // ========== 绘制 ==========
+        function drawCell(x, y, emoji, color) {
+            const px = x * CELL;
+            const py = y * CELL;
+            ctx.fillStyle = color + '33';
+            ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2);
+            ctx.strokeStyle = color + '88';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(px + 1, py + 1, CELL - 2, CELL - 2);
+            ctx.font = `${CELL - 6}px serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(emoji, px + CELL / 2, py + CELL / 2 + 1);
+        }
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 网格线
+            ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+            ctx.lineWidth = 0.5;
+            for (let r = 0; r <= ROWS; r++) {
+                ctx.beginPath(); ctx.moveTo(0, r * CELL); ctx.lineTo(COLS * CELL, r * CELL); ctx.stroke();
+            }
+            for (let c = 0; c <= COLS; c++) {
+                ctx.beginPath(); ctx.moveTo(c * CELL, 0); ctx.lineTo(c * CELL, ROWS * CELL); ctx.stroke();
+            }
+
+            // 已固定的方块
+            for (let r = 0; r < ROWS; r++)
+                for (let c = 0; c < COLS; c++)
+                    if (board[r][c]) drawCell(c, r, board[r][c].emoji, board[r][c].color);
+
+            // 当前方块
+            if (current) {
+                for (let r = 0; r < current.shape.length; r++)
+                    for (let c = 0; c < current.shape[r].length; c++)
+                        if (current.shape[r][c])
+                            drawCell(current.x + c, current.y + r, current.emoji, current.color);
+            }
+        }
+
+        function drawNext() {
+            nextCtx.clearRect(0, 0, 120, 120);
+            if (!next) return;
+            const shape = next.shape;
+            const cellSize = 24;
+            const offsetX = (120 - shape[0].length * cellSize) / 2;
+            const offsetY = (120 - shape.length * cellSize) / 2;
+            for (let r = 0; r < shape.length; r++)
+                for (let c = 0; c < shape[r].length; c++)
+                    if (shape[r][c]) {
+                        const px = offsetX + c * cellSize;
+                        const py = offsetY + r * cellSize;
+                        nextCtx.fillStyle = next.color + '33';
+                        nextCtx.fillRect(px + 1, py + 1, cellSize - 2, cellSize - 2);
+                        nextCtx.font = `${cellSize - 4}px serif`;
+                        nextCtx.textAlign = 'center';
+                        nextCtx.textBaseline = 'middle';
+                        nextCtx.fillText(next.emoji, px + cellSize / 2, py + cellSize / 2 + 1);
+                    }
+        }
+
+        function updateUI() {
+            const cfg = MODES[mode];
+            document.getElementById('levelDisplay').textContent = level;
+            document.getElementById('scoreDisplay').textContent = score;
+            const progress = Math.min(100, (linesThisLevel / cfg.linesPerLevel) * 100);
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('levelInfo').textContent =
+                `${linesThisLevel} / ${cfg.linesPerLevel} 行`;
+        }
+
+        // ========== 游戏循环 ==========
+        function gameStep(timestamp) {
+            if (!paused && !gameOver) {
+                if (timestamp - lastDrop > dropInterval) {
+                    if (!movePiece(0, 1)) lockPiece();
+                    else AudioFX.fall();
+                    lastDrop = timestamp;
+                }
+                drawBoard();
+            }
+            gameLoop = requestAnimationFrame(gameStep);
+        }
+
+        function startGame(selectedMode) {
+            mode = selectedMode;
+            board = createBoard();
+            score = 0;
+            level = 1;
+            linesCleared = 0;
+            linesThisLevel = 0;
+            paused = false;
+            gameOver = false;
+            dropInterval = getDropSpeed();
+            lastDrop = 0;
+
+            hideAllOverlays();
+            showScreen('gameScreen');
+            next = randomPiece();
+            spawnPiece();
+            updateUI();
+            AudioFX.startBGM();
+            if (gameLoop) cancelAnimationFrame(gameLoop);
+            gameLoop = requestAnimationFrame(gameStep);
+        }
+
+        function nextLevel() {
+            level++;
+            linesThisLevel = 0;
+            dropInterval = getDropSpeed();
+            board = createBoard();
+            paused = false;
+            hideAllOverlays();
+            next = randomPiece();
+            spawnPiece();
+            updateUI();
+            AudioFX.startBGM();
+        }
+
+        // ========== UI 控制 ==========
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function showOverlay(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function hideAllOverlays() {
+            document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active'));
+        }
+
+        function togglePause() {
+            if (gameOver) return;
+            paused = !paused;
+            if (paused) {
+                AudioFX.stopBGM();
+                showOverlay('pauseOverlay');
+            } else {
+                hideAllOverlays();
+                AudioFX.startBGM();
+                lastDrop = performance.now();
+            }
+        }
+
+        function toggleSound() {
+            const on = !AudioFX.isEnabled();
+            AudioFX.setEnabled(on);
+            const label = on ? '🔊 音效：开' : '🔇 音效：关';
+            document.getElementById('soundToggleMenu').textContent = label;
+            if (on && document.getElementById('gameScreen').classList.contains('active') && !paused && !gameOver) {
+                AudioFX.startBGM();
+            }
+        }
+
+        function quitToMenu() {
+            paused = true;
+            gameOver = true;
+            AudioFX.stopBGM();
+            if (gameLoop) cancelAnimationFrame(gameLoop);
+            hideAllOverlays();
+            showScreen('menuScreen');
+        }
+
+        // ========== 事件绑定 ==========
+        document.querySelectorAll('.mode-card').forEach(card => {
+            card.addEventListener('click', () => startGame(card.dataset.mode));
+        });
+
+        document.getElementById('soundToggleMenu').addEventListener('click', toggleSound);
+        document.getElementById('pauseBtn').addEventListener('click', togglePause);
+        document.getElementById('quitBtn').addEventListener('click', quitToMenu);
+        document.getElementById('resumeBtn').addEventListener('click', togglePause);
+        document.getElementById('nextLevelBtn').addEventListener('click', nextLevel);
+        document.getElementById('playAgainBtn').addEventListener('click', () => { hideAllOverlays(); startGame(mode); });
+        document.getElementById('backMenuBtn').addEventListener('click', quitToMenu);
+        document.getElementById('backMenuBtn2').addEventListener('click', quitToMenu);
+        document.getElementById('retryBtn').addEventListener('click', () => { hideAllOverlays(); startGame(mode); });
+
+        document.addEventListener('keydown', e => {
+            if (document.getElementById('menuScreen').classList.contains('active')) return;
+
+            if (e.key === 'p' || e.key === 'P') { togglePause(); return; }
+            if (paused || gameOver) return;
+
+            switch (e.key) {
+                case 'ArrowLeft': e.preventDefault(); movePiece(-1, 0); drawBoard(); break;
+                case 'ArrowRight': e.preventDefault(); movePiece(1, 0); drawBoard(); break;
+                case 'ArrowDown': e.preventDefault(); softDrop(); drawBoard(); break;
+                case 'ArrowUp': e.preventDefault(); rotatePiece(); drawBoard(); break;
+                case ' ': e.preventDefault(); hardDrop(); drawBoard(); break;
+            }
+        });
+
+        // 首次点击激活音频（浏览器策略）
+        document.body.addEventListener('click', () => {
+            const c = new (window.AudioContext || window.webkitAudioContext)();
+            if (c.state === 'suspended') c.resume();
+        }, { once: true });
+    </script>
+</body>
+
+</html>
